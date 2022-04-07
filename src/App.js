@@ -1,4 +1,4 @@
-import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
+import { createUserWithEmailAndPassword, getAuth, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import './App.css';
 import app from "./firebase.init";
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -14,6 +14,8 @@ function App() {
   const [password, setPassword] = useState('');
   const [validated, setValidated] = useState(false);
   const [error, setError] = useState('');
+  const [registered, setRegistered] = useState(false);
+  const [name, setName] = useState('');
 
   const handleEmailOnBlur = e => {
     setEmail(e.target.value);
@@ -21,6 +23,11 @@ function App() {
   const handlePasswordOnBlur = e => {
     setPassword(e.target.value)
   }
+
+  const handleChecked = e => {
+    setRegistered(e.target.checked);
+  }
+
   const handleForm = e => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -37,14 +44,62 @@ function App() {
 
     setValidated(true);
 
+    if (registered) {
+      signInWithEmailAndPassword(auth, email, password)
+        .then(res => {
+          const user = res.user;
+          console.log(user);
+        })
+        .catch(error => {
+          setError(error.message)
+          console.error(error);
+        })
+    }
+    else {
+      createUserWithEmailAndPassword(auth, email, password)
+        .then(result => {
+          const user = result.user;
+          console.log(user);
+          setEmail('');
+          setPassword('');
+          sendVerificationMail();
+          updateName();
+        })
+        .catch(error => {
+          setError(error.message);
+        })
+    }
 
-    createUserWithEmailAndPassword(auth, email, password)
-      .then(result => {
-        const user = result.user;
-        console.log(user);
+  }
+
+  const sendVerificationMail = () => {
+    sendEmailVerification(auth.currentUser)
+      .then(() => {
+        console.log('Verification mail sent');
+      })
+
+  }
+
+  const handleResetPassWord = () => {
+    sendPasswordResetEmail(auth, email)
+      .then(() => {
+        console.log('Reset mail sent')
+      })
+  }
+
+  const handleName = e => {
+    setName(e.target.value);
+  }
+
+  const updateName = () => {
+    updateProfile(auth.currentUser, {
+      displayName: name
+    })
+      .then(() => {
+        console.log('updating name');
       })
       .catch(error => {
-        console.error(error);
+        setError(error.message);
       })
   }
 
@@ -60,8 +115,15 @@ function App() {
       </form> */}
 
       <div className="w-50 mx-auto mt-5 shadow-lg p-3 rounded">
-        <h2 className="text-primary text-center">Please Register</h2>
+        <h2 className="text-primary text-center">Please {registered ? 'login' : 'Register'}</h2>
         <Form noValidate validated={validated} onSubmit={handleForm}>
+          {!registered && <Form.Group className="mb-3" controlId="formBasicText">
+            <Form.Label>Give your name</Form.Label>
+            <Form.Control onBlur={handleName} type="text" placeholder="Your Name" required />
+            <Form.Control.Feedback type="invalid">
+              Please give a valid email.
+            </Form.Control.Feedback>
+          </Form.Group>}
           <Form.Group className="mb-3" controlId="formBasicEmail">
             <Form.Label>Email address</Form.Label>
             <Form.Control onBlur={handleEmailOnBlur} type="email" placeholder="Enter email" required />
@@ -69,7 +131,7 @@ function App() {
               We'll never share your email with anyone else.
             </Form.Text>
             <Form.Control.Feedback type="invalid">
-              Please give a valid email.
+              Please give a valid Name
             </Form.Control.Feedback>
           </Form.Group>
 
@@ -80,9 +142,14 @@ function App() {
               Please give a password.
             </Form.Control.Feedback>
           </Form.Group>
+          <Form.Group className="mb-3" controlId="formBasicCheckbox">
+            <Form.Check onChange={handleChecked} type="checkbox" label="Already Registered?" />
+          </Form.Group>
           <p>{error}</p>
+          <Button onClick={handleResetPassWord} variant="link">Forgot Password?</Button>
+          <br />
           <Button variant="primary" type="submit">
-            Submit
+            {registered ? 'Login' : 'Register'}
           </Button>
         </Form>
       </div>
